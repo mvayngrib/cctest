@@ -150,8 +150,8 @@ const sLimiter = new RateLimiter(8, 'second')
 const hLimiter = new RateLimiter(1000, 'hour')
 
 const withLimiter = (limiter) => (fn) => (...args) => limiter.removeTokens(1, () => fn(...args))
-const withBackoff = (fn) => async (...args) => {
-  let delay = 100
+const withBackoff = (initialDelay) => (fn) => async (...args) => {
+  delay = initialDelay
   while (true) {
     try {
       return await fn(...args)
@@ -167,7 +167,7 @@ const compose = (...fns) => (x) => fns.reduceRight((v, f) => f(v), x)
 const wrap = compose(
   withLimiter(hLimiter),
   withLimiter(sLimiter),
-  withBackoff
+  withBackoff(100)
 )
 
 const wrapped = wrap(myFunction)
