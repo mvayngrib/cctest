@@ -2,21 +2,22 @@ const fetch = require('node-fetch')
 const startTime = Date.now()
 let errors = 0
 let numFinished = 0
+let numPending = 0
 
 const { RateLimiter } = require('limiter')
 
 const myFunction = async (item, index, totalItems) => {
   const start = Date.now()
-  console.log(`request: ${index}, start time: ${Date.now() - startTime}`)
+
+  numPending++
+  console.log(`request: ${index}, start time: ${Date.now() - startTime}, numPending: ${numPending}`)
+
   const result = await fetch(
     `https://min-api.cryptocompare.com/data/histoday?fsym=${item}&tsym=USD&limit=1000`
   )
     .then((j) => j.json())
     .then((res) => {
-      if (totalItems === index + 1) {
-        console.log('FINISH', Date.now() - startTime)
-        console.error('ERRORS', errors)
-      }
+      numPending--
       if (Object.keys(res.RateLimit).length) {
         errors++
         console.error(
@@ -31,6 +32,11 @@ const myFunction = async (item, index, totalItems) => {
           `request: ${index}. finished after: ${Date.now() - start}. finish time - ${Date.now() -
             startTime}, numFinished: ${numFinished}`
         )
+      }
+
+      if (numFinished === totalItems) {
+        console.log('FINISH', Date.now() - startTime)
+        console.error('ERRORS', errors)
       }
     })
 
@@ -140,7 +146,7 @@ const data = [
   'DRKC',
 ]
 
-const sLimiter = new RateLimiter(10, 'second')
+const sLimiter = new RateLimiter(8, 'second')
 const hLimiter = new RateLimiter(1000, 'hour')
 
 const withLimiter = (limiter) => (fn) => (...args) => limiter.removeTokens(1, () => fn(...args))
@@ -150,9 +156,9 @@ const withBackoff = (fn) => async (...args) => {
     try {
       return await fn(...args)
     } catch (err) {
+      await new Promise((resolve) => setTimeout(resolve, delay))
       delay *= 2
       delay = Math.min(delay, 10000) // never wait more than 10 seconds
-      await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
 }
