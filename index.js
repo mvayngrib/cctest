@@ -165,8 +165,8 @@ const withBackoff = (initialDelay) => (fn) => async (...args) => {
 
 const compose = (...fns) => (x) => fns.reduceRight((v, f) => f(v), x)
 const wrap = compose(
-  withLimiter(hLimiter),
   withLimiter(sLimiter),
+  withLimiter(hLimiter),
   withBackoff(100)
 )
 
